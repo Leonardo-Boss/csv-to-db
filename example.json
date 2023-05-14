@@ -1,0 +1,17 @@
+{
+  "Nome do arquivo": {
+    "table":"nome da tabela",
+    "columns": {
+      "numero da coluna no arquivo em string contando apartir de 1": {
+        "db_name": "nome da coluna no banco de dados",
+        "fk": {
+          "table": "nome da tabela no banco",
+          "column": "nome da coluna de linkagem no banco"
+        }
+      },
+    "defaults": {
+        "nome da coluna no banco": "valor default"
+      }
+    }
+  }
+}
