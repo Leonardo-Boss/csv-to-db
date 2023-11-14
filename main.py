@@ -1,6 +1,37 @@
+#!/bin/python3
+import sys
 import json
-import pandas as pd
+import csv
+
+from abc import ABC, abstractmethod
+
 import pymysql
+
+class Func(ABC):
+    @abstractmethod
+    def run(self, column):
+        pass
+
+class FK_getter(Func):
+    def __init__(self, db:pymysql.Connection, table:str, column:str) -> None:
+        self.db = db
+        self.table = table
+        self.column = column
+        self.query = f'SELECT rowid FROM {table} WHERE {column} =%s'
+
+    def run(self, column):
+        print('executing query searching', column)
+        cursor = self.db.cursor()
+        value = (column,)
+        cursor.execute(self.query, value)
+        id = cursor.fetchone()
+        cursor.close()
+        print(id)
+        return id[0] if id else id
+
+class Basic_Field(Func):
+    def run(self, column):
+        return column
 
 class DB_Inserter:
     def __init__(self, path, db:pymysql.Connection) -> None:
@@ -9,68 +40,78 @@ class DB_Inserter:
             self.conf = json.load(f)
 
     def do(self):
-        for self.name, self.file_config in self.conf.items():
-            self.generate_template()
-            self.get_data_and_placeholders()
-            self.insert()
+        self.generate_template()
+        self.get_data_and_placeholders()
+        self.insert()
 
     def generate_template(self):
-        table_name = self.file_config['table']
+        table_name = self.conf['table']
         self.query = f'INSERT INTO {table_name} ('
         self.data_template = {}
-        for column_n, column_v in self.file_config['columns'].items():
+        for column_n, column_v in self.conf['columns'].items():
             self.query += f'{column_v["db_name"]},'
 
             if column_v.get('fk'):
-                def get_fk(column):
-                    cursor = db.cursor()
-                    self.query = f'SELECT id FROM {column_v["fk"]["table"]} where {column_v["fk"]["column"]}=%s'
-                    value = (column,)
-                    cursor.execute(self.query, value)
-                    id = cursor.fetchone()
-                    cursor.close()
-                    return id[0] if id else id
+                get_fk = FK_getter(self.db, column_v["fk"]["table"], column_v["fk"]["column"])
                 self.data_template[column_n] = get_fk
 
             else:
-                self.data_template[column_n] = lambda x:x
+                self.data_template[column_n] = Basic_Field()
 
-        defaults = self.file_config.get('defaults')
+        defaults = self.conf.get('defaults')
         if defaults:
-            for i, (db_name, value) in enumerate(defaults.items()):
+            for i, (db_name, value) in enumerate(defaults.items(),1):
                 self.data_template[-i] = value
                 self.query += f'{db_name},'
         self.query = f'{self.query[:-1]})'
 
     def get_data_and_placeholders(self):
-        df = pd.read_csv(self.name, delimiter=';')
+        df = csv.reader(open(0), delimiter=self.conf['delimiter'])
+        
+        # skip vertical offset
+        if not (voffset:=self.conf.get('voffset')): voffset = 1
+        for _ in range(voffset):
+            next(df)
+
         self.data = []
         self.place_holder = 'VALUES '
-
-        for row in df.itertuples(name=None):
-            self.place_holder += '('
+        for row in df:
+            row_place_holder = '('
+            tmp_data=[]
             for column, func in self.data_template.items():
                 column = int(column)
-                self.place_holder += '%s,'
-
-                if column <= 0:
-                    self.data.append(func)
+                row_place_holder += '%s,'
+                # for default values
+                if column < 0:
+                    tmp_data.append(func)
                     continue
 
-                self.data.append(func(row[column]))
+                if not row[column]:
+                    print(row)
+                    print(column)
+                    break
 
-            self.place_holder = f'{self.place_holder[:-1]}),'
+                tmp_data.append(func.run(row[column]))
+            # only add if there is no null
+            else:
+                row_place_holder = f'{row_place_holder[:-1]}),'
+                self.place_holder += row_place_holder
+                self.data += tmp_data
 
         self.place_holder = f'{self.place_holder[:-1]}'
 
     def insert(self):
+        print(self.query)
+        print(self.place_holder.count('('))
         cursor = self.db.cursor()
         print(cursor.execute(f'{self.query} {self.place_holder}', self.data))
         cursor.close()
         db.commit()
 
 if __name__ == "__main__":
-    db = pymysql.connect(host='localhost', user='dolibarr', database='dolibarr', passwd="senha")
-    dbi = DB_Inserter('test.json', db)
+    if len(sys.argv) != 7: exit()
+    _, config_file, user, passwd, host, port, database = sys.argv
+    db = pymysql.connect(host=host, user=user, database=database, passwd=passwd, port=int(port))
+    dbi = DB_Inserter(config_file, db)
     dbi.do()
     db.close()

@@ -1,16 +1,18 @@
 {
-  "Nome do arquivo": {
-    "table":"nome da tabela",
+  "Name of the csv file": {
+	"delimiter":",",
+	"voffset": 1,
+    "table":"table name",
     "columns": {
-      "numero da coluna no arquivo em string contando apartir de 1": {
-        "db_name": "nome da coluna no banco de dados",
+      "column number in the csv counting from 0": {
+        "db_name": "name of the column in the database",
         "fk": {
-          "table": "nome da tabela no banco",
-          "column": "nome da coluna de linkagem no banco"
+          "table": "name of the foreign table",
+          "column": "name of the column used in the WHERE clause"
         }
       },
     "defaults": {
-        "nome da coluna no banco": "valor default"
+        "name of the column in the database": "default value"
       }
     }
   }
