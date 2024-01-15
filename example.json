@@ -6,6 +6,7 @@
     "columns": {
       "column number in the csv counting from 0": {
         "db_name": "name of the column in the database",
+		"null": true,
         "fk": {
           "table": "name of the foreign table",
           "column": "name of the column used in the WHERE clause"

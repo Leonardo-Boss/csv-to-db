@@ -53,10 +53,10 @@ class DB_Inserter:
 
             if column_v.get('fk'):
                 get_fk = FK_getter(self.db, column_v["fk"]["table"], column_v["fk"]["column"])
-                self.data_template[column_n] = get_fk
+                self.data_template[column_n] = (column_n, get_fk, column_v.get('null'))
 
             else:
-                self.data_template[column_n] = Basic_Field()
+                self.data_template[column_n] = (column_n, Basic_Field(), column_v.get('null'))
 
         defaults = self.conf.get('defaults')
         if defaults:
@@ -78,7 +78,7 @@ class DB_Inserter:
         for row in df:
             row_place_holder = '('
             tmp_data=[]
-            for column, func in self.data_template.items():
+            for column, func, null in self.data_template.values():
                 column = int(column)
                 row_place_holder += '%s,'
                 # for default values
@@ -87,9 +87,9 @@ class DB_Inserter:
                     continue
 
                 if not row[column]:
-                    print(row)
-                    print(column)
-                    break
+                    if not null: break
+                    tmp_data.append(None)
+                    continue
 
                 tmp_data.append(func.run(row[column]))
             # only add if there is no null
