@@ -91,7 +91,13 @@ class DB_Inserter:
                     tmp_data.append(None)
                     continue
 
-                tmp_data.append(func.run(row[column]))
+                res = func.run(row[column])
+                if not row[column]:
+                    if not null: break
+                    tmp_data.append(None)
+                    continue
+
+                tmp_data.append(res)
             # only add if there is no null
             else:
                 row_place_holder = f'{row_place_holder[:-1]}),'
