@@ -61,7 +61,7 @@ class DB_Inserter:
         defaults = self.conf.get('defaults')
         if defaults:
             for i, (db_name, value) in enumerate(defaults.items(),1):
-                self.data_template[-i] = value
+                self.data_template[-i] = (-i, value, None)
                 self.query += f'{db_name},'
         self.query = f'{self.query[:-1]})'
 
