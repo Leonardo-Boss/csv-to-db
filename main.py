@@ -92,7 +92,7 @@ class DB_Inserter:
                     continue
 
                 res = func.run(row[column])
-                if not row[column]:
+                if not res:
                     if not null: break
                     tmp_data.append(None)
                     continue
